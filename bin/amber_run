@@ -1,7 +1,6 @@
 #!/bin/bash
 source ~/bin/utils.sh
 
-datetime=$(date +"%m-%d-%y %T")
 USAGE=$(cat <<-END
 -----------------------
 AMBER simulation script
@@ -15,6 +14,20 @@ AMBER simulation script
 END
 )
 
+HOSTNAME=$(hostname) 
+case $HOSTNAME in
+    glogin*)
+       machine="cascade"
+       ;;
+    WE35255) 
+       machine="macbook"
+       ;;
+    *) 
+       machine="unknown"
+       ;;
+esac
+
+datetime=$(date +"%m-%d-%y %T")
 #defaults
 templates_folder="/home/marat/software/amber/templates"
 template="dynamics-0.amt"
@@ -133,21 +146,6 @@ envsubst < $templates_folder/$template > $INPUTFILE
 
 PARAMS="-exec pmemd.MPI -n ${nodes} -t ${runtime} -a ${account} -p $parmfile -c $coordfile -i $INPUTFILE $PARAMS"
 
-README=$(cat <<-END
-*****************************************************
-*      AMBER equlibration                           *
-*****************************************************
- created:             $(date +"%m-%d-%y %T") 
- user:                ${USER}
- input coords:        $coordfile_in
- input topology:      $parmfile_in
- inital temperature:  $temp_start
- target temperature:  $temp_target
- time step:           $mdstepsize ps
- simulation time:     $mdtime ps
-END
-)
-
 cat << EOF2 > par.dat
 rundir=$rundir
 temp_target=$temp_target
@@ -160,6 +158,20 @@ account=$account
 selection="$selection"
 EOF2
 
-echo "$README"
-amber_submit $PARAMS
+case $machine in
+    cascade)
+       echo "runing on cascade"
+       amber_submit_cascade $PARAMS
+       ;;
+    macbook) 
+       echo "runing on macbook is not set yet"
+       ;;
+    *) 
+       echo "cannot run on unknown machine"
+       ;;
+esac
+
+
+
+
 
