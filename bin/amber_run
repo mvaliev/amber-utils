@@ -1,0 +1,165 @@
+#!/bin/bash
+source ~/bin/utils.sh
+
+datetime=$(date +"%m-%d-%y %T")
+USAGE=$(cat <<-END
+-----------------------
+AMBER simulation script
+-----------------------
+ -p parameter file
+ -c coordinate file
+ -t topology file
+ -d run directory
+ -h usage
+-----------------------
+END
+)
+
+#defaults
+templates_folder="/home/marat/software/amber/templates"
+template="dynamics-0.amt"
+setupfile="par.dat"
+rundir='dynamics'
+temp_target=300
+temp_start=100
+mdstepsize=0.001
+mdtime=10
+opt_cycles=10000
+nodes=4
+runtime=60
+account=nwchem-cap
+#selection=":IHS"
+
+
+#process command line arguments
+while [ $# -gt 0 ] 
+do
+    case $1 in
+        -p)
+             setupfile=$2
+             shift 2
+             ;;
+        -c)
+             coordfile_in=$2
+             shift 2
+             ;;
+        -t)
+            parmfile_in=$2
+            shift 2
+            ;;
+        -h)
+            echo "$USAGE"
+            exit 0
+            ;;
+        -d)
+            rundir=$2
+            shift 2
+            ;;
+        *) # save other arguments
+           PARAMS="$PARAMS $1"
+           shift 1
+           ;;
+    esac
+done
+
+if [ -f "$setupfile" ] 
+then
+ source $setupfile
+fi
+
+#compute other parameters
+mdsteps=$(echo "scale=0;${mdtime}/${mdstepsize}" | bc)
+ntave=$(echo "scale=0;${mdsteps}/4" | bc)
+
+if [ ! -z "$selection" ] 
+then
+ constraints="ibelly=1,bellymask="$selection","
+fi
+
+
+if [ -z "$coordfile_in" ]
+then
+echo "missing coord inpcrd file"
+exit 1
+fi
+#adding "in" prefix to avoid accidental name clashing 
+coordfile="in-"$(get_root_with_ext $coordfile_in)
+
+if [ -z "$parmfile_in" ]
+then
+echo "missing parameter file"
+exit 1
+fi
+parmfile=$(get_root_with_ext $parmfile_in)
+
+#setup run directory
+if [ -d $rundir ] 
+then
+  echo "found existing $rundir directory"
+  exit 1
+else
+  mkdir $rundir
+fi
+
+cp $coordfile_in $rundir/$coordfile
+cp $parmfile_in $rundir/$parmfile
+
+
+cd $rundir
+INPUTFILE="md-0.in"
+
+export datetime
+export mdstepsize
+export temp_start
+export temp_target
+export mdsteps
+export ntave
+export constraints
+export opt_cycles
+export templates_folder
+export template
+export setupfile
+export rundir
+export temp_target
+export temp_start
+export mdtime
+export opt_cycles
+export nodes
+export runtime
+export account
+export coordfile_in
+export parmfile_in
+envsubst < $templates_folder/$template > $INPUTFILE
+
+PARAMS="-exec pmemd.MPI -n ${nodes} -t ${runtime} -a ${account} -p $parmfile -c $coordfile -i $INPUTFILE $PARAMS"
+
+README=$(cat <<-END
+*****************************************************
+*      AMBER equlibration                           *
+*****************************************************
+ created:             $(date +"%m-%d-%y %T") 
+ user:                ${USER}
+ input coords:        $coordfile_in
+ input topology:      $parmfile_in
+ inital temperature:  $temp_start
+ target temperature:  $temp_target
+ time step:           $mdstepsize ps
+ simulation time:     $mdtime ps
+END
+)
+
+cat << EOF2 > par.dat
+rundir=$rundir
+temp_target=$temp_target
+temp_start=$temp_start
+mdstepsize=$mdstepsize
+mdtime=$mdtime
+nodes=$nodes
+runtime=$runtime
+account=$account
+selection="$selection"
+EOF2
+
+echo "$README"
+amber_submit $PARAMS
+

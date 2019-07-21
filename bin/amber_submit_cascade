@@ -1,0 +1,122 @@
+#!/bin/bash
+source ~/bin/utils.sh
+
+USAGE=$(cat <<-END
+    AMBER submission script
+    -n     number of nodes
+    -a     account
+    -c     coordfile
+    -p     parameter/topology file
+    -i     input file
+    -t     requested run time
+    -debug dry run (i.e. no submission)
+    -exec  executable
+    -h     usage
+END
+)
+
+
+#defaults
+NCORE=8
+MODE="submit"
+AMBERBIN="sander.MPI"
+
+PARAMS=""
+#process command line
+while [ $# -gt 0 ] 
+do
+    case "$1" in
+        -n)
+             NNODE=$2
+             shift 2
+             ;;
+        -a)
+             ACCOUNT=$(get_account $2)
+             shift 2
+             ;;
+        -c)
+             COORDFILE=$2
+             shift 2
+             ;;
+        -p)
+             PARMFILE=$2
+             shift 2
+             ;;
+        -i)
+             INPUTFILE=$2
+             shift 2
+             ;;
+         -exec)
+             AMBERBIN=$2
+             shift 2
+             ;;
+         -t)
+             TIME=$2
+             shift 2
+             ;;
+        -h)
+             echo "$USAGE"
+             exit 0
+             ;;
+        -debug)
+             MODE="debug"
+             shift 1
+             ;;
+         *)
+            PARAMS="$PARAMS $1"
+            shift
+            ;;
+    esac
+done
+#check for bad/undefined parameters
+[ -z "$NNODE" ] && { echo "NNODE is not set";exit 1; }
+[ -z "$ACCOUNT" ] && { echo "ACCOUNT is not set";exit 1; }
+[ -z "$TIME" ] && { echo "TIME is not set";exit 1; }
+[ -f "$COORDFILE" ] || { echo "COORDFILE $COORDFILE does not exist";exit 1; }
+[ -f "$PARMFILE" ]  ||  { echo "PARMFILE $PARMFILE  does not exist";exit 1; }
+[ -f "$INPUTFILE" ] || { echo "INPUTFILE $INPUTFILE does not exist";exit 1; }
+
+JOBNAME=$(get_prefix $INPUTFILE)
+AMBERJOB=$JOBNAME".msub"
+OUTPUTFILE=$JOBNAME".out"
+ERRORFILE=$JOBNAME".err"
+TRAJFILE=$JOBNAME".nc"
+RESTARTFILE=$JOBNAME".x"
+
+#Generate submission script
+cat <<EOF1 > $AMBERJOB
+#!/bin/csh -f
+#MSUB -A $ACCOUNT
+#MSUB -l nodes=${NNODE}:ppn=${NCORE},walltime=${TIME}:00
+#MSUB -N $JOBNAME
+#MSUB -rn
+#MSUB -o $OUTPUTFILE.%j
+#MSUB -e $ERRORFILE.%j
+#MSUB -m ea
+#MSUB -M marat@emsl.pnl.gov
+
+############################################################################
+# Set the AMBER environment variables 
+############################################################################
+#
+# AMBER HP Linux (MPI)
+#
+source /home/marat/codes/amber-06-10-17/amber.csh
+#source /home/scicons/cascade/apps/amber/amber18/amber.csh
+source /etc/profile.d/modules.csh
+
+module load intel/14.0.3   
+module load impi/4.1.2.040  
+module load  pnnl_env/1.1
+
+setenv MPIRETURN 999
+
+limit stacksize unlimited
+mpirun -n \$SLURM_NPROCS -ppn $NCORE \${AMBERHOME}/bin/$AMBERBIN -O -i $INPUTFILE -c $COORDFILE -p $PARMFILE -o $OUTPUTFILE -r $RESTARTFILE -x $TRAJFILE 
+
+EOF1
+
+if [[ "$MODE" == "submit" ]]
+then
+ msub -V $AMBERJOB
+fi
