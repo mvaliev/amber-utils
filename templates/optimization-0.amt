@@ -1,0 +1,18 @@
+*****************************************************
+*      AMBER equlibration                           *
+*****************************************************
+ created:             ${datetime}
+ user:                ${USER}
+ input coords:        $coordfile_in
+ input topology:      $parmfile_in
+*****************************************************
+&cntrl
+imin=1,               !Flag to run minimization
+ntx=1,                !Read only cooordinates
+ntpr=100,             !Every 100 steps energy information will be printed
+ntwx=100,             !Every 100 steps, the coordinates will be written 
+maxcyc=${opt_cycles}, !maximum number of cycles of minimization
+ntb=1,                !constant volume
+ntpr=100,             !Every ntpr steps, energy information will be printed
+${constraints}      
+/

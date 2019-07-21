@@ -1,0 +1,18 @@
+Equilibration run
+&cntrl
+imin=0,               !Flag to run md
+irest=1,              !Continue simulation
+ntx=5,                !Read coords and velocities from restart file
+nstlim=${mdsteps},    !number of md steps
+dt=${mdstepsize},     !time step
+temp0=${temp_target}, !final temp
+ntc=1,                !No shake
+ntt=2,                !andersen thermostat
+ntb=1,                !constant volume 
+ntp=0,                !no pressure scaling 
+ntave=${ntave},       !Frequency of print energy fluctuations
+ntpr=1000,            !Frequency of print energy information
+ntwx=3000,            !Frequency of write coordinates
+ntwr=1000,            !Frequency of write restart file
+${constraints}
+/
