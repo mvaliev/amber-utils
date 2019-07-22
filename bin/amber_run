@@ -1,5 +1,6 @@
 #!/bin/bash
 source ~/bin/utils.sh
+source ~/software/amber/bin/amber_utils.sh
 
 USAGE=$(cat <<-END
 -----------------------
@@ -30,7 +31,6 @@ esac
 datetime=$(date +"%m-%d-%y %T")
 #defaults
 templates_folder="/home/marat/software/amber/templates"
-template="dynamics-0.amt"
 setupfile="par.dat"
 rundir='dynamics'
 temp_target=300
@@ -80,9 +80,36 @@ then
  source $setupfile
 fi
 
+template_to_task $template
+exit 0
 #compute other parameters
 mdsteps=$(echo "scale=0;${mdtime}/${mdstepsize}" | bc)
 ntave=$(echo "scale=0;${mdsteps}/4" | bc)
+
+case $task in
+    opt*)
+       template=${template:="optimization-0.amt"}
+       prefix="opt"
+       ;;
+    equil*) 
+       template=${template:="equilibration-0.amt"}
+       prefix="opt"
+       ;;
+    dynamic*) 
+       echo "found dynamics" $task
+       template=${template:="dynamics-0.amt"}
+       prefix="dyn"
+       ;;
+    *) 
+       if [ -z "$template" ] 
+       then
+         echo "please provide either task or template"
+         exit 1 
+       else
+
+       fi
+       ;;
+ esac
 
 if [ ! -z "$selection" ] 
 then
@@ -119,7 +146,7 @@ cp $parmfile_in $rundir/$parmfile
 
 
 cd $rundir
-INPUTFILE="md-0.in"
+INPUTFILE=$prefix"-0.in"
 
 export datetime
 export mdstepsize
