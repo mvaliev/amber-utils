@@ -1,12 +1,16 @@
 #!/bin/bash
+
+[ -z $AMBER_UTILS ] && { echo "AMBER_UTILS installation not found"; exit 1;}
+
 source ~/bin/utils.sh
-source ~/software/amber/bin/amber_utils.sh
+source $AMBER_UTILS/bin/amber_utils.sh
+
 
 USAGE=$(cat <<-END
 -----------------------
 AMBER simulation script
 -----------------------
- -p parameter file
+ -p parameter file (default par.dat)
  -c coordinate file
  -t topology file
  -d run directory
@@ -15,56 +19,33 @@ AMBER simulation script
 END
 )
 
-HOSTNAME=$(hostname) 
-case $HOSTNAME in
-    glogin*)
-       machine="cascade"
-       ;;
-    WE35255) 
-       machine="macbook"
-       ;;
-    *) 
-       machine="unknown"
-       ;;
-esac
-
-datetime=$(date +"%m-%d-%y %T")
-#defaults
-templates_folder="/home/marat/software/amber/templates"
 setupfile="par.dat"
-rundir='dynamics'
-temp_target=300
-temp_start=100
-mdstepsize=0.001
-mdtime=10
-opt_cycles=10000
-nodes=4
-runtime=60
-account=nwchem-cap
-#selection=":IHS"
-
 
 #process command line arguments
 while [ $# -gt 0 ] 
 do
     case $1 in
         -p)
+             check_file $2
              setupfile=$2
              shift 2
              ;;
         -c)
+             check_file $2
              coordfile_in=$2
              shift 2
              ;;
         -t)
-            parmfile_in=$2
-            shift 2
-            ;;
+             check_file $2
+             parmfile_in=$2
+             shift 2
+             ;;
         -h)
             echo "$USAGE"
             exit 0
             ;;
         -d)
+            check_nodir $2
             rundir=$2
             shift 2
             ;;
@@ -75,41 +56,20 @@ do
     esac
 done
 
-if [ -f "$setupfile" ] 
+#first get task, then defaults, and then resource again
+source $setupfile
+check_file $AMBER_TEMPLATES/${task}.dat && source $AMBER_TEMPLATES/${task}.dat
+source $setupfile
+
+#set other parameters
+machine=$(get_hostname)
+datetime=$(date +"%m-%d-%y %T")
+
+if [ ! -z "$mdtime" ]
 then
- source $setupfile
+ mdsteps=$(echo "scale=0;${mdtime}/${mdstepsize}" | bc)
+ ntave=$(echo "scale=0;${mdsteps}/4" | bc)
 fi
-
-template_to_task $template
-exit 0
-#compute other parameters
-mdsteps=$(echo "scale=0;${mdtime}/${mdstepsize}" | bc)
-ntave=$(echo "scale=0;${mdsteps}/4" | bc)
-
-case $task in
-    opt*)
-       template=${template:="optimization-0.amt"}
-       prefix="opt"
-       ;;
-    equil*) 
-       template=${template:="equilibration-0.amt"}
-       prefix="opt"
-       ;;
-    dynamic*) 
-       echo "found dynamics" $task
-       template=${template:="dynamics-0.amt"}
-       prefix="dyn"
-       ;;
-    *) 
-       if [ -z "$template" ] 
-       then
-         echo "please provide either task or template"
-         exit 1 
-       else
-
-       fi
-       ;;
- esac
 
 if [ ! -z "$selection" ] 
 then
@@ -132,23 +92,20 @@ exit 1
 fi
 parmfile=$(get_root_with_ext $parmfile_in)
 
-#setup run directory
-if [ -d $rundir ] 
-then
-  echo "found existing $rundir directory"
-  exit 1
-else
-  mkdir $rundir
-fi
+rundir=${rundir:=$prefix-0}
+INPUTFILE=$prefix"-0.in"
+
+mkdir $rundir
 
 cp $coordfile_in $rundir/$coordfile
 cp $parmfile_in $rundir/$parmfile
 
 
 cd $rundir
-INPUTFILE=$prefix"-0.in"
 
-export datetime
+task_info | tee -a $INPUTFILE
+
+export mdtime
 export mdstepsize
 export temp_start
 export temp_target
@@ -156,34 +113,9 @@ export mdsteps
 export ntave
 export constraints
 export opt_cycles
-export templates_folder
-export template
-export setupfile
-export rundir
-export temp_target
-export temp_start
-export mdtime
-export opt_cycles
-export nodes
-export runtime
-export account
-export coordfile_in
-export parmfile_in
 envsubst < $templates_folder/$template > $INPUTFILE
 
 PARAMS="-exec pmemd.MPI -n ${nodes} -t ${runtime} -a ${account} -p $parmfile -c $coordfile -i $INPUTFILE $PARAMS"
-
-cat << EOF2 > par.dat
-rundir=$rundir
-temp_target=$temp_target
-temp_start=$temp_start
-mdstepsize=$mdstepsize
-mdtime=$mdtime
-nodes=$nodes
-runtime=$runtime
-account=$account
-selection="$selection"
-EOF2
 
 case $machine in
     cascade)

@@ -1,11 +1,3 @@
-*****************************************************
-*      AMBER equlibration                           *
-*****************************************************
- created:             ${datetime}
- user:                ${USER}
- input coords:        $coordfile_in
- input topology:      $parmfile_in
-*****************************************************
 &cntrl
 imin=1,               !Flag to run minimization
 ntx=1,                !Read only cooordinates

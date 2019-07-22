@@ -1,0 +1,12 @@
+templates_folder="/home/marat/software/amber/templates"
+setupfile="par.dat"
+temp_target=300
+temp_start=100
+mdstepsize=0.001
+mdtime=10
+opt_cycles=10000
+nodes=4
+runtime=60
+account=nwchem-cap
+
+

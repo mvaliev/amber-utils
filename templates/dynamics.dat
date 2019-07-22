@@ -1,0 +1,10 @@
+templates_folder=${AMBER_TEMPLATES}
+template="dynamics-0.amt"
+prefix="dyn"
+temp_target=300
+mdstepsize=0.001
+mdtime=10
+nodes=4
+runtime=60
+account=nwchem-cap
+

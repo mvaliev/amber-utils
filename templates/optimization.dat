@@ -1,0 +1,7 @@
+templates_folder=${AMBER_TEMPLATES}
+template="optimization-0.amt"
+prefix="opt"
+opt_cycles=10000
+nodes=4
+runtime=60
+account=nwchem-cap
