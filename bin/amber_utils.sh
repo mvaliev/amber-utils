@@ -68,9 +68,9 @@ END
 esac
 USAGE+=$(cat <<-END
 
-Number of nodesr:   :  $nodes
-Runtime requestedr: :  $runtime min
-Account:            :  $account 
+Number of nodes:       $nodes
+Runtime requested:     $runtime min
+Account:               $account 
 END
 )
 echo "$USAGE"

@@ -1,9 +1,20 @@
 #!/bin/bash
 
+rundir=.
 [ -z $AMBER_UTILS ] && { echo "AMBER_UTILS installation not found"; exit 1;}
 
 source ~/bin/utils.sh
 source $AMBER_UTILS/bin/amber_utils.sh
+
+COUNTER=0
+while [  $COUNTER -lt 100 ]; do
+#    echo The counter is $COUNTER
+    test=$(find_latest *-$COUNTER.*) 
+    if [ -z "$test" ];then
+	break
+    fi
+    let COUNTER=COUNTER+1 
+done
 
 USAGE=$(cat <<-END
 -----------------------
@@ -55,31 +66,9 @@ do
     esac
 done
 
-for var in $PARAMS
-do
-    case $var in
-        *.inpcrd)
-            inpcrdfile_in=${inpcrdfile_in:=$var}
-             ;;
-        *.x)
-            restartfile_in=${restartfile_in:=$var}
-            ;;
-        *.prmtop)
-            parmfile_in=${parmfile_in:=$var}
-            ;;
-        *) # save other arguments
-           PARAMS1="$PARAMS1 $var"
-    esac
-done
-
-for var in $PARAMS
-do
-  if [ -d "$var" ];then
-    inpcrdfile_in=${inpcrdfile_in:=$(find_latest $var/*.inpcrd)}
-    restartfile_in=${restartfile_in:=$(find_latest $var/*.x)}
-    parmfile_in=${parmfile_in:=$(find_latest $var/*.prmtop)}
-  fi
-done
+inpcrdfile_in=${inpcrdfile_in:=$(find_latest ./*.inpcrd)}
+restartfile_in=${restartfile_in:=$(find_latest ./*.x)}
+parmfile_in=${parmfile_in:=$(find_latest ./*.prmtop)}
 
 coordfile_in=${coordfile_in:=$restartfile_in}
 coordfile_in=${coordfile_in:=$inpcrdfile_in}
@@ -112,7 +101,7 @@ echo "missing coord inpcrd file"
 exit 1
 fi
 #adding "in" prefix to avoid accidental name clashing 
-coordfile="in-"$(get_root_with_ext $coordfile_in)
+coordfile="in-"$COUNTER$(get_root_with_ext $coordfile_in)
 
 if [ -z "$parmfile_in" ]
 then
@@ -121,16 +110,10 @@ exit 1
 fi
 parmfile=$(get_root_with_ext $parmfile_in)
 
-rundir=${rundir:=$prefix-0}
-INPUTFILE=$prefix"-0.in"
-
-mkdir $rundir
+INPUTFILE=$prefix"-$COUNTER.in"
 
 cp $coordfile_in $rundir/$coordfile
 cp $parmfile_in $rundir/$parmfile
-
-
-cd $rundir
 
 task_info | tee -a $INPUTFILE
 
