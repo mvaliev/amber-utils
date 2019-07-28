@@ -130,9 +130,8 @@ cp $coordfile_in $rundir/$coordfile
 cp $parmfile_in $rundir/$parmfile
 
 
-cd $rundir
 
-task_info | tee -a $INPUTFILE
+task_info | tee -a $rundir/$INPUTFILE
 
 export mdtime
 export mdstepsize
@@ -142,8 +141,9 @@ export mdsteps
 export ntave
 export constraints
 export opt_cycles
-envsubst < $templates_folder/$template >> $INPUTFILE
+envsubst < $templates_folder/$template >>$rundir/$INPUTFILE
 
+cd $rundir
 PARAMS="-exec pmemd.MPI -n ${nodes} -t ${runtime} -a ${account} -p $parmfile -c $coordfile -i $INPUTFILE $PARAMS1"
 
 case $machine in
