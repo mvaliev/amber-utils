@@ -1,0 +1,15 @@
+#!/bin/bash
+
+pdb_in=`mktemp maratXXX`
+
+cat > $pdb_in << EOF
+parm $1
+trajin $2
+autoimage
+trajout $3
+EOF
+
+echo $pdb_in
+
+cpptraj < $pdb_in
+

@@ -126,6 +126,7 @@ INPUTFILE=$prefix"-0.in"
 
 mkdir $rundir
 
+cp $setupfile $rundir/
 cp $coordfile_in $rundir/$coordfile
 cp $parmfile_in $rundir/$parmfile
 
